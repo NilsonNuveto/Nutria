@@ -1,10 +1,24 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { api } from './api';
-const props=defineProps({user:Object,setup:Boolean});
+const props = defineProps({
+    user: Object,
+    setup: Boolean,
+    adminEmail: {
+        type: String,
+        default: '',
+    },
+});
 const adminPath=location.pathname==='/admin';
 const mode=ref(location.pathname==='/register'?'register':adminPath&&props.setup?'setup':'login');
-const form=ref({name:'',email:'',crn:'',password:'',password_confirmation:'',token:''});
+const form = ref({
+    name: '',
+    email: props.setup ? props.adminEmail : '',
+    crn: '',
+    password: '',
+    password_confirmation: '',
+    token: '',
+});
 const error=ref(''),message=ref(''),busy=ref(false),users=ref([]),filter=ref('pending');
 const isAdmin=computed(()=>adminPath&&props.user?.role==='admin');
 const filtered=computed(()=>users.value.filter(u=>!filter.value||u.status===filter.value));

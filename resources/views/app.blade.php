@@ -9,5 +9,16 @@
     <title>nutria. — Planejamento alimentar</title>
     @vite('resources/js/app.js')
 </head>
-<body><div id="app" data-user="{{ json_encode(auth()->user()?->only(['id', 'name', 'email', 'role', 'status'])) }}" data-admin-setup="{{ \App\Models\User::where('role', 'admin')->whereNotNull('setup_token')->exists() ? '1' : '0' }}"></div><noscript>Ative o JavaScript para acessar seu planejamento alimentar.</noscript></body>
+<body><div
+    id="app"
+    data-user="{{ json_encode(auth()->user()?->only([
+        'id',
+        'name',
+        'email',
+        'role',
+        'status'
+    ])) }}"
+    data-admin-setup="{{ ($adminSetup ?? false) ? '1' : '0' }}"
+    data-admin-email="{{ $adminEmail ?? '' }}"
+></div><noscript>Ative o JavaScript para acessar seu planejamento alimentar.</noscript></body>
 </html>

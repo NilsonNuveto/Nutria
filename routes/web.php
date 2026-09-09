@@ -7,6 +7,7 @@ use App\Http\Controllers\PatientController;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureApproved;
 use Illuminate\Support\Facades\Route;
+use App\Models\User;
 
 Route::view('/login', 'app')->name('login');
 Route::view('/register', 'app')->name('register');
@@ -15,7 +16,15 @@ Route::get('/admin', function () {
         abort_unless(auth()->user()->role === 'admin', 403);
     }
 
-    return view('app');
+    $admin = User::query()
+        ->where('role', 'admin')
+        ->whereNotNull('setup_token')
+        ->first(['email']);
+
+    return view('app', [
+        'adminSetup' => $admin !== null,
+        'adminEmail' => $admin?->email ?? '',
+    ]);
 })->name('admin');
 Route::post('/api/auth/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 Route::post('/api/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
