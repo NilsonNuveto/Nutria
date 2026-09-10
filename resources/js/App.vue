@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import { Leaf, LayoutDashboard, UserRound, Utensils, BookOpen, ChartNoAxesCombined, Database, Plus, Check, Printer, Download, ArrowUpRight, Search, X, ChevronRight, Save, Trash2, Copy, Menu, CircleAlert, LoaderCircle } from 'lucide-vue-next';
+import { LayoutDashboard, UserRound, Utensils, BookOpen, ChartNoAxesCombined, Database, Plus, Check, Printer, Download, ArrowUpRight, Search, X, ChevronRight, Save, Trash2, Copy, Menu, CircleAlert, LoaderCircle } from 'lucide-vue-next';
 import { api } from './api';
+import nutriaLogo from '../images/nutria-logo.png';
 import { createFoodSearch } from './foodSearch';
 import { nutrients, format, label, total, profile, consumedQuantity } from './nutrition';
 import FoodPicker from './components/FoodPicker.vue';
@@ -74,7 +75,7 @@ onMounted(async()=>{await perform(async()=>{await refresh();if(db.value.plans.le
 
 <template>
 <div class="app-shell">
-  <aside ref="sidebar" id="main-navigation" class="sidebar" :class="{expanded:mobileNav}"><a class="brand" href="#" @click.prevent="page='plan'"><span class="brand-symbol"><Leaf :size="24"/></span>nutria<span class="brand-dot">.</span></a><span class="workspace-label">ESPAÇO DE NUTRIÇÃO</span><nav><button v-for="n in nav" :key="n.id" :class="{active:page===n.id}" @click="page=n.id;mobileNav=false"><component :is="n.icon" :size="20"/><span>{{n.name}}</span><ChevronRight v-if="page===n.id" :size="16" class="nav-arrow"/></button></nav><div class="sidebar-bottom"><span class="source-dot"></span> Dados persistidos com segurança<small>Seu planejamento, em um só lugar.</small></div></aside>
+  <aside ref="sidebar" id="main-navigation" class="sidebar" :class="{expanded:mobileNav}"><a class="brand" href="#" @click.prevent="page='plan'"><img class="brand-logo" :src="nutriaLogo" alt="" aria-hidden="true"/>nutria<span class="brand-dot">.</span></a><span class="workspace-label">ESPAÇO DE NUTRIÇÃO</span><nav><button v-for="n in nav" :key="n.id" :class="{active:page===n.id}" @click="page=n.id;mobileNav=false"><component :is="n.icon" :size="20"/><span>{{n.name}}</span><ChevronRight v-if="page===n.id" :size="16" class="nav-arrow"/></button></nav><div class="sidebar-bottom"><span class="source-dot"></span> Dados persistidos com segurança<small>Seu planejamento, em um só lugar.</small></div></aside>
   <div class="main-shell"><header class="topbar"><button ref="menuToggle" :aria-expanded="mobileNav" aria-controls="main-navigation" class="icon-button mobile-menu" @click="mobileNav=!mobileNav" aria-label="Abrir navegação"><Menu/></button><span class="breadcrumb">Workspace <ChevronRight :size="14"/> <strong>{{nav.find(n=>n.id===page)?.name}}</strong></span><span class="topbar-right"><span class="local-label"><i></i> Ambiente local</span><span class="local-label">{{db.user?.name}}</span><button class="text-button" @click="logout">Sair</button></span></header>
   <main>
     <div class="error-banner" v-if="error" role="alert"><CircleAlert :size="20"/><span>{{error}}</span><button @click="error=''" aria-label="Dispensar erro"><X :size="18"/></button></div>

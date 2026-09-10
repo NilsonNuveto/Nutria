@@ -6,7 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#285d49">
     <meta name="description" content="Planejamento alimentar, receitas e composição nutricional com fontes rastreáveis.">
-    <title>nutria. — Planejamento alimentar</title>
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <title>Nutria</title>
     @vite('resources/js/app.js')
 </head>
 <body><div

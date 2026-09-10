@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "nutria/nutria",
     "type": "project",
-    "description": "Nutria — plataforma de planejamento alimentar para nutricionistas.",
+    "description": "Nutria",
     "keywords": [
         "laravel",
         "framework"

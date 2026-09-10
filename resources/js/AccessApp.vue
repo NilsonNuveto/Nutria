@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { api } from './api';
+import nutriaLogo from '../images/nutria-logo.png';
 const props = defineProps({
     user: Object,
     setup: Boolean,
@@ -31,7 +32,7 @@ onMounted(async()=>{if(isAdmin.value){try{await refresh();}catch(e){error.value=
 </script>
 <template>
 <main class="access-shell" :class="{'admin-shell':isAdmin}">
-  <header class="access-header"><span class="brand">nutria<span class="brand-dot">.</span></span><span>{{isAdmin?'ADMINISTRAÇÃO':'SEU ESPAÇO DE NUTRIÇÃO'}}</span></header>
+  <header class="access-header"><span class="brand"><img class="brand-logo" :src="nutriaLogo" alt="" aria-hidden="true"/>nutria<span class="brand-dot">.</span></span><span>{{isAdmin?'ADMINISTRAÇÃO':'SEU ESPAÇO DE NUTRIÇÃO'}}</span></header>
   <div v-if="error" class="error-banner" role="alert">{{error}}</div><p v-if="message" class="access-notice" role="status">{{message}}</p>
   <template v-if="isAdmin">
     <div class="section-head"><div><h1>Olá, {{user.name}}</h1><p>Analise os cadastros para liberar o acesso dos nutricionistas.</p></div><div class="access-actions"><a class="button secondary" href="/">Meu espaço</a><button class="button secondary" @click="logout">Sair</button></div></div>
@@ -58,5 +59,5 @@ onMounted(async()=>{if(isAdmin.value){try{await refresh();}catch(e){error.value=
 </main>
 </template>
 <style scoped>
-.access-shell{max-width:540px;margin:0 auto;padding:40px 20px;min-height:100vh}.admin-shell{max-width:1100px}.access-header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:36px}.access-header>span:last-child{font-size:.65rem;letter-spacing:.12em;color:#627363}.access-card{padding:32px}.access-card h1{font-size:1.8rem;margin:12px 0}.access-form{display:grid;gap:18px;margin-top:26px}.access-links{margin-top:22px;text-align:center}.access-links a{color:#285d49}.access-notice{background:#e6f1e6;color:#285d49;padding:18px;border-radius:12px}.admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}.admin-stats section{display:grid;gap:8px}.admin-stats strong{font-size:2rem}.approval-row{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px 0;border-bottom:1px solid #e4e9e2}.approval-row p{overflow-wrap:anywhere}.access-actions{display:flex;flex-wrap:wrap;gap:10px}.access-actions a{text-decoration:none}@media(max-width:600px){.admin-stats{grid-template-columns:1fr}.approval-row,.section-head{align-items:stretch;flex-direction:column}.access-card{padding:22px}.access-shell{padding:24px 16px}}
+.access-shell{max-width:540px;margin:0 auto;padding:40px 20px;min-height:100vh}.admin-shell{max-width:1100px}.access-header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:36px}.access-header .brand-logo{width:38px;height:38px}.access-header>span:last-child{font-size:.65rem;letter-spacing:.12em;color:#627363}.access-card{padding:32px}.access-card h1{font-size:1.8rem;margin:12px 0}.access-form{display:grid;gap:18px;margin-top:26px}.access-links{margin-top:22px;text-align:center}.access-links a{color:#285d49}.access-notice{background:#e6f1e6;color:#285d49;padding:18px;border-radius:12px}.admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}.admin-stats section{display:grid;gap:8px}.admin-stats strong{font-size:2rem}.approval-row{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px 0;border-bottom:1px solid #e4e9e2}.approval-row p{overflow-wrap:anywhere}.access-actions{display:flex;flex-wrap:wrap;gap:10px}.access-actions a{text-decoration:none}@media(max-width:600px){.admin-stats{grid-template-columns:1fr}.approval-row,.section-head{align-items:stretch;flex-direction:column}.access-card{padding:22px}.access-shell{padding:24px 16px}}
 </style>
