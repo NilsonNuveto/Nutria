@@ -15,7 +15,7 @@ class AuthController extends Controller
     public function register(Request $request): JsonResponse
     {
         $request->merge(['email' => mb_strtolower(trim($request->input('email', '')))]);
-        $data = $request->validate(['name' => 'required|string|max:160', 'email' => 'required|email|max:255|unique:users', 'crn' => 'nullable|string|max:50', 'password' => ['required', 'confirmed', Password::min(12)]]);
+        $data = $request->validate(['name' => 'required|string|max:160', 'email' => 'required|email|max:255|unique:users', 'crn' => 'nullable|string|max:50', 'password' => ['required', 'confirmed', Password::min(8)]]);
         $adminEmail = mb_strtolower(trim((string) config('nutria.admin_email')));
         abort_if($adminEmail !== '' && $data['email'] === $adminEmail, 422, 'Este e-mail está reservado ao administrador.');
         $user = new User;
@@ -38,7 +38,7 @@ class AuthController extends Controller
 
     public function setup(Request $request): array
     {
-        $data = $request->validate(['email' => 'required|email', 'token' => 'required|string|max:100', 'password' => ['required', 'confirmed', Password::min(12)]]);
+        $data = $request->validate(['email' => 'required|email', 'token' => 'required|string|max:100', 'password' => ['required', 'confirmed', Password::min(8)]]);
         DB::transaction(function () use ($data): void {
             $user = User::where('email', mb_strtolower(trim($data['email'])))->where('role', 'admin')->lockForUpdate()->first();
             abort_unless($user?->setup_token && hash_equals($user->setup_token, hash('sha256', $data['token'])), 422, 'Código inválido ou primeiro acesso já concluído.');

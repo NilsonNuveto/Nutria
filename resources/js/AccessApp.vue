@@ -50,8 +50,8 @@ onMounted(async()=>{if(isAdmin.value){try{await refresh();}catch(e){error.value=
       <label>E-mail<input v-model="form.email" type="email" required maxlength="255" autocomplete="username" :readonly="mode==='setup'" /></label>
       <label v-if="mode==='register'">CRN (opcional)<input v-model="form.crn" maxlength="50" /></label>
       <label v-if="mode==='setup'">Código de ativação<input v-model="form.token" type="password" required autocomplete="off" /><small>Use o valor configurado em NUTRIA_ADMIN_SETUP_TOKEN para o primeiro acesso.</small></label>
-      <label>{{mode==='login'?'Senha':'Crie uma senha'}}<input v-model="form.password" type="password" required :minlength="mode==='login'?1:12" :autocomplete="mode==='login'?'current-password':'new-password'" /><small v-if="mode!=='login'">Use pelo menos 12 caracteres.</small></label>
-      <label v-if="mode!=='login'">Confirme a senha<input v-model="form.password_confirmation" type="password" required minlength="12" autocomplete="new-password" /></label>
+      <label>{{mode==='login'?'Senha':'Crie uma senha'}}<input v-model="form.password" type="password" required :minlength="mode==='login'?1:8" :autocomplete="mode==='login'?'current-password':'new-password'" /><small v-if="mode!=='login'">Use pelo menos 8 caracteres.</small></label>
+      <label v-if="mode!=='login'">Confirme a senha<input v-model="form.password_confirmation" type="password" required minlength="8" autocomplete="new-password" /></label>
       <button class="button primary full" :disabled="busy">{{busy?'Aguarde…':mode==='register'?'Enviar para aprovação':mode==='setup'?'Definir senha e entrar':'Entrar'}}</button>
     </form>
     <p class="access-links"><a v-if="mode==='register'||message" href="/login">Voltar para o login</a><a v-else-if="!adminPath" href="/register">Ainda não tem acesso? Solicitar cadastro</a></p>

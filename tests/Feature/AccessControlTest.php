@@ -36,6 +36,25 @@ class AccessControlTest extends TestCase
         $this->get('/admin')->assertForbidden();
     }
 
+    public function test_registration_requires_at_least_eight_password_characters(): void
+    {
+        $shortPassword = '1234567';
+        $this->postJson('/api/auth/register', [
+            'name' => 'Senha curta',
+            'email' => 'short-password@example.com',
+            'password' => $shortPassword,
+            'password_confirmation' => $shortPassword,
+        ])->assertUnprocessable()->assertJsonValidationErrors('password');
+
+        $validPassword = '12345678';
+        $this->postJson('/api/auth/register', [
+            'name' => 'Senha válida',
+            'email' => 'valid-password@example.com',
+            'password' => $validPassword,
+            'password_confirmation' => $validPassword,
+        ])->assertCreated();
+    }
+
     public function test_admin_first_password_requires_single_use_local_code(): void
     {
         $this->seed(NutritionSeeder::class);
