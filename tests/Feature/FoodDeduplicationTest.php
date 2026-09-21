@@ -25,13 +25,14 @@ class FoodDeduplicationTest extends TestCase
         $official = Food::where('source_id', 3)->where('name', $duplicate->name)->firstOrFail();
         $plan = Plan::first();
         $data = $plan->data;
-        $data['meals'][0]['items'] = [['food_id' => $duplicate->id, 'quantity' => 50, 'multiplier' => 2]];
+        $data['meals'][0]['items'] = [['food_id' => $duplicate->id, 'quantity' => 50, 'multiplier' => 2, 'alternative' => ['food_id' => $duplicate->id, 'quantity' => 75, 'multiplier' => 1]]];
         $plan->update(['data' => $data]);
         $recipe = $this->postJson('/api/recipes', ['name' => 'Arroz teste', 'ingredients' => [['food_id' => $duplicate->id, 'quantity' => 200]]])->assertSuccessful()->json();
         $this->artisan('foods:deduplicate')->assertSuccessful();
         $this->assertDatabaseMissing('foods', ['id' => $duplicate->id]);
         $this->assertEquals($official->id, $plan->fresh()->data['meals'][0]['items'][0]['food_id']);
         $this->assertEquals(2, $plan->fresh()->data['meals'][0]['items'][0]['multiplier']);
+        $this->assertEquals($official->id, $plan->fresh()->data['meals'][0]['items'][0]['alternative']['food_id']);
         $this->assertEqualsWithDelta($official->calories * 2, Food::findOrFail($recipe['food_id'])->calories, .000001);
         $this->assertEquals(0, app(FoodDeduplicator::class)->run());
         $this->seed(NutritionSeeder::class);

@@ -153,29 +153,62 @@ class Nutrition
 
     public function items(array $items, $foods): array
     {
-        $totals = array_fill_keys(self::NUTRIENTS, 0.0);
-        $missing = array_fill_keys(self::NUTRIENTS, 0);
-        $quantity = 0;
+        $result = $this->emptyTotal();
         foreach ($items as $item) {
-            $food = $foods[$item['food_id']];
-            $consumedQuantity = BeverageUnits::quantity($item, $food);
-            $quantity += $consumedQuantity * ($food->raw_values['volume_conversion']['density_g_ml'] ?? 1);
-            foreach (self::NUTRIENTS as $key) {
-                if ($food[$key] === null && $consumedQuantity > 0) {
-                    $missing[$key]++;
-                } else {
-                    $totals[$key] += ($food[$key] ?? 0) * $consumedQuantity / $food['base_quantity'];
-                }
+            $itemResult = $this->item($item, $foods);
+            $result['quantity'] += $itemResult['quantity'];
+            foreach (self::NUTRIENTS as $nutrient) {
+                $result['totals'][$nutrient] += $itemResult['totals'][$nutrient];
+                $result['missing'][$nutrient] += $itemResult['missing'][$nutrient];
             }
         }
 
-        return ['totals' => $totals, 'missing' => $missing, 'quantity' => $quantity];
+        return $result;
+    }
+
+    private function item(array $item, $foods): array
+    {
+        $primary = $this->option($item, $foods[$item['food_id']]);
+        if (! isset($item['alternative'])) {
+            return $primary;
+        }
+
+        $alternative = $this->option($item['alternative'], $foods[$item['alternative']['food_id']]);
+        $result = $this->emptyTotal();
+        $result['quantity'] = ($primary['quantity'] + $alternative['quantity']) / 2;
+        foreach (self::NUTRIENTS as $nutrient) {
+            $result['totals'][$nutrient] = ($primary['totals'][$nutrient] + $alternative['totals'][$nutrient]) / 2;
+            $result['missing'][$nutrient] = $primary['missing'][$nutrient] + $alternative['missing'][$nutrient];
+        }
+
+        return $result;
+    }
+
+    private function option(array $option, Food $food): array
+    {
+        $result = $this->emptyTotal();
+        $consumedQuantity = BeverageUnits::quantity($option, $food);
+        $result['quantity'] = $consumedQuantity * ($food->raw_values['volume_conversion']['density_g_ml'] ?? 1);
+        foreach (self::NUTRIENTS as $nutrient) {
+            if ($food[$nutrient] === null && $consumedQuantity > 0) {
+                $result['missing'][$nutrient] = 1;
+            } else {
+                $result['totals'][$nutrient] = ($food[$nutrient] ?? 0) * $consumedQuantity / $food['base_quantity'];
+            }
+        }
+
+        return $result;
+    }
+
+    private function emptyTotal(): array
+    {
+        return ['totals' => array_fill_keys(self::NUTRIENTS, 0.0), 'missing' => array_fill_keys(self::NUTRIENTS, 0), 'quantity' => 0.0];
     }
 
     public function plan(array $data): array
     {
         $all = collect($data['meals'])->flatMap(fn (array $meal) => $meal['items'])->all();
-        $foodIds = collect($all)->pluck('food_id')->unique();
+        $foodIds = collect($all)->flatMap(fn (array $item): array => array_filter([$item['food_id'], $item['alternative']['food_id'] ?? null]))->unique();
         $foods = Food::whereKey($foodIds)->get()->keyBy('id');
         $meals = [];
         $groups = [];

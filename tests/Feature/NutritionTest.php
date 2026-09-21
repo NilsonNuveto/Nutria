@@ -156,6 +156,40 @@ class NutritionTest extends TestCase
         $this->assertSame($newId, $mapped['id']);
     }
 
+    public function test_meal_alternatives_are_saved_and_use_the_average_nutrients(): void
+    {
+        $foods = Food::where('unit', 'g')->whereNotNull('calories')->whereNotNull('protein')->whereNotNull('carbs')->whereNotNull('fat')->take(2)->get();
+        $primary = $foods->firstOrFail();
+        $alternative = $foods->last();
+        $plan = Plan::first()->toArray();
+        $plan['data']['meals'] = [[
+            'name' => 'Café da Manhã',
+            'time' => '07:45',
+            'items' => [[
+                'food_id' => $primary->id,
+                'quantity' => $primary->base_quantity,
+                'multiplier' => 1,
+                'alternative' => [
+                    'food_id' => $alternative->id,
+                    'quantity' => $alternative->base_quantity,
+                    'multiplier' => 1,
+                ],
+            ]],
+        ]];
+
+        $this->putJson('/api/plans/1', $plan)
+            ->assertOk()
+            ->assertJsonPath('data.meals.0.items.0.alternative.food_id', $alternative->id);
+        $result = $this->postJson('/api/calculate', $plan)->assertOk()->json();
+        foreach (Nutrition::NUTRIENTS as $nutrient) {
+            $this->assertEqualsWithDelta(($primary[$nutrient] + $alternative[$nutrient]) / 2, $result['totals'][$nutrient], .000001);
+        }
+
+        $plan['version'] = 2;
+        $plan['data']['meals'][0]['items'][0]['alternative']['food_id'] = 999999;
+        $this->putJson('/api/plans/1', $plan)->assertUnprocessable();
+    }
+
     public function test_meal_units_are_saved_and_scale_calculations(): void
     {
         $plan = Plan::first()->toArray();

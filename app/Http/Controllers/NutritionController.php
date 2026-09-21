@@ -57,11 +57,17 @@ class NutritionController extends Controller
             'data.profile.adjustment' => 'nullable|numeric|min:0|max:10000', 'data.notes' => 'nullable|string|max:10000',
             'data.meals' => 'required|array|min:1|max:30', 'data.meals.*' => 'required|array:name,time,items',
             'data.meals.*.name' => ['required', Rule::in($seed['meal_types'])], 'data.meals.*.time' => 'required|date_format:H:i',
-            'data.meals.*.items' => 'present|array|max:100', 'data.meals.*.items.*' => 'required|array:food_id,quantity,multiplier,measure,measure_ml',
+            'data.meals.*.items' => 'present|array|max:100', 'data.meals.*.items.*' => 'required|array:food_id,quantity,multiplier,measure,measure_ml,alternative',
             'data.meals.*.items.*.measure' => 'sometimes|required|in:g,mL,cup,coffee_cup,glass,goblet',
             'data.meals.*.items.*.measure_ml' => 'sometimes|required|numeric|gt:0|max:2000',
             'data.meals.*.items.*.multiplier' => 'sometimes|required|numeric|min:0|max:10000',
-            'data.meals.*.items.*.food_id' => ['required', 'integer', $this->visibleFoodRule()], 'data.meals.*.items.*.quantity' => 'required|numeric|min:0|max:100000'];
+            'data.meals.*.items.*.food_id' => ['required', 'integer', $this->visibleFoodRule()], 'data.meals.*.items.*.quantity' => 'required|numeric|min:0|max:100000',
+            'data.meals.*.items.*.alternative' => 'sometimes|required|array:food_id,quantity,multiplier,measure,measure_ml',
+            'data.meals.*.items.*.alternative.measure' => 'sometimes|required|in:g,mL,cup,coffee_cup,glass,goblet',
+            'data.meals.*.items.*.alternative.measure_ml' => 'sometimes|required|numeric|gt:0|max:2000',
+            'data.meals.*.items.*.alternative.multiplier' => 'sometimes|required|numeric|min:0|max:10000',
+            'data.meals.*.items.*.alternative.food_id' => ['required_with:data.meals.*.items.*.alternative', 'integer', $this->visibleFoodRule()],
+            'data.meals.*.items.*.alternative.quantity' => 'required_with:data.meals.*.items.*.alternative|numeric|min:0|max:100000'];
     }
 
     public function calculate(Request $request, Nutrition $nutrition)
@@ -116,7 +122,7 @@ class NutritionController extends Controller
         foreach (Plan::all() as $p) {
             foreach ($p->data['meals'] as $m) {
                 foreach ($m['items'] as $i) {
-                    abort_if($i['food_id'] === $food->id, 409, 'Alimento utilizado em um plano.');
+                    abort_if($i['food_id'] === $food->id || ($i['alternative']['food_id'] ?? null) === $food->id, 409, 'Alimento utilizado em um plano.');
                 }
             }
         }

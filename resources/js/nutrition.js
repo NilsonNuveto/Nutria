@@ -17,17 +17,36 @@ export const consumedQuantity = (item, food) => {
   if (measure === 'g') return quantity / (conversion?.density_g_ml ?? 1);
   return quantity * (measure === 'goblet' ? Number(item.measure_ml ?? 150) : (measureOptions.find(m=>m.key===measure)?.ml ?? 1));
 };
+const emptyTotal = () => ({quantity:0,totals:Object.fromEntries(nutrients.map(n=>[n.key,0])),missing:Object.fromEntries(nutrients.map(n=>[n.key,0]))});
+function optionTotal(option, foods) {
+  const result=emptyTotal(),food=foods.get(option?.food_id),quantity=consumedQuantity(option||{},food);
+  if(!food || !Number.isFinite(quantity) || Number(option.quantity)<0 || Number(option.multiplier ?? 1)<0) return result;
+  result.quantity=quantity*(food.raw_values?.volume_conversion?.density_g_ml??1);
+  for(const n of nutrients){
+    if(food[n.key]==null && quantity>0) result.missing[n.key]=1;
+    else result.totals[n.key]=Number(food[n.key]||0)*quantity/food.base_quantity;
+  }
+  return result;
+}
+export function itemTotal(item, foods) {
+  const primary=optionTotal(item,foods);
+  if(!item.alternative) return primary;
+  const alternative=optionTotal(item.alternative,foods),result=emptyTotal();
+  result.quantity=(primary.quantity+alternative.quantity)/2;
+  for(const n of nutrients){
+    result.totals[n.key]=(primary.totals[n.key]+alternative.totals[n.key])/2;
+    result.missing[n.key]=primary.missing[n.key]+alternative.missing[n.key];
+  }
+  return result;
+}
 export function total(items, foods) {
-  const result={quantity:0,totals:{},missing:{}};
-  for(const n of nutrients){result.totals[n.key]=0;result.missing[n.key]=0;}
-  for(const i of items){
-    const f=foods.get(i.food_id);
-    const quantity=consumedQuantity(i,f);
-    if(!f || !Number.isFinite(quantity) || Number(i.quantity)<0 || Number(i.multiplier ?? 1)<0) continue;
-    result.quantity+=quantity*(f.raw_values?.volume_conversion?.density_g_ml??1);
+  const result=emptyTotal();
+  for(const item of items){
+    const itemResult=itemTotal(item,foods);
+    result.quantity+=itemResult.quantity;
     for(const n of nutrients){
-      if(f[n.key]==null && quantity>0) result.missing[n.key]++;
-      else result.totals[n.key]+=Number(f[n.key]||0)*quantity/f.base_quantity;
+      result.totals[n.key]+=itemResult.totals[n.key];
+      result.missing[n.key]+=itemResult.missing[n.key];
     }
   }
   return result;

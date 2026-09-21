@@ -45,6 +45,9 @@ class FoodDeduplicator
                 foreach ($data['meals'] as &$meal) {
                     foreach ($meal['items'] as &$item) {
                         $item['food_id'] = $aliases[$item['food_id']] ?? $item['food_id'];
+                        if (isset($item['alternative'])) {
+                            $item['alternative']['food_id'] = $aliases[$item['alternative']['food_id']] ?? $item['alternative']['food_id'];
+                        }
                     }
                     unset($item);
                 }
