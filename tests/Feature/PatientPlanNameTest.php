@@ -16,6 +16,8 @@ class PatientPlanNameTest extends TestCase
         $this->seed(NutritionSeeder::class);
         $this->actingAs(User::factory()->create(['status' => 'approved']));
         $payload = $this->getJson('/api/bootstrap')->assertOk()->json('template');
+        $this->assertCount(6, $payload['data']['meals']);
+        $this->assertEmpty(array_intersect(['Pré-Treino', 'Pós-Treino', 'Lanche - Noite'], array_column($payload['data']['meals'], 'name')));
         unset($payload['name']);
         $payload['data']['profile']['name'] = 'Ana Silva';
         $created = $this->postJson('/api/plans', $payload)->assertSuccessful()->assertJsonPath('name', 'Ana Silva')->json();

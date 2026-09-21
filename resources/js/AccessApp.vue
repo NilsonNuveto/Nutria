@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { Eye, EyeOff } from 'lucide-vue-next';
 import { api } from './api';
 import nutriaLogo from '../images/nutria-logo.png';
 const props = defineProps({
@@ -20,13 +21,13 @@ const form = ref({
     password_confirmation: '',
     token: '',
 });
-const error=ref(''),message=ref(''),busy=ref(false),users=ref([]),filter=ref('pending');
+const error=ref(''),message=ref(''),busy=ref(false),users=ref([]),filter=ref('pending'),showPassword=ref(false);
 const isAdmin=computed(()=>adminPath&&props.user?.role==='admin');
 const filtered=computed(()=>users.value.filter(u=>!filter.value||u.status===filter.value));
 const statuses={pending:'Aguardando aprovação',approved:'Aprovado',rejected:'Não aprovado'};
 async function submit(){busy.value=true;error.value='';try{const result=await api('auth/'+mode.value,'POST',form.value);if(result.redirect)location.assign(result.redirect);else{message.value=result.message;form.value.password='';form.value.password_confirmation='';}}catch(e){error.value=e.message;}finally{busy.value=false;}}
 async function refresh(){users.value=await api('admin/users');}
-async function update(user,status){busy.value=true;error.value='';try{await api('admin/users/'+user.id,'PATCH',{status});await refresh();message.value=status==='approved'?'Acesso liberado para '+user.name+'.':'Cadastro atualizado.';}catch(e){error.value=e.message;}finally{busy.value=false;}}
+async function update(user,status){busy.value=true;error.value='';try{const updated=await api('admin/users/'+user.id,'PATCH',{status});Object.assign(user,updated);message.value=status==='approved'?'Acesso liberado para '+user.name+'.':'Cadastro atualizado.';}catch(e){error.value=e.message;}finally{busy.value=false;}}
 async function logout(){const result=await api('auth/logout','POST');location.assign(result.redirect);}
 onMounted(async()=>{if(isAdmin.value){try{await refresh();}catch(e){error.value=e.message;}}});
 </script>
@@ -50,7 +51,7 @@ onMounted(async()=>{if(isAdmin.value){try{await refresh();}catch(e){error.value=
       <label>E-mail<input v-model="form.email" type="email" required maxlength="255" autocomplete="username" :readonly="mode==='setup'" /></label>
       <label v-if="mode==='register'">CRN (opcional)<input v-model="form.crn" maxlength="50" /></label>
       <label v-if="mode==='setup'">Código de ativação<input v-model="form.token" type="password" required autocomplete="off" /><small>Use o valor configurado em NUTRIA_ADMIN_SETUP_TOKEN para o primeiro acesso.</small></label>
-      <label>{{mode==='login'?'Senha':'Crie uma senha'}}<input v-model="form.password" type="password" required :minlength="mode==='login'?1:8" :autocomplete="mode==='login'?'current-password':'new-password'" /><small v-if="mode!=='login'">Use pelo menos 8 caracteres.</small></label>
+      <label>{{mode==='login'?'Senha':'Crie uma senha'}}<span class="password-input"><input v-model="form.password" :type="mode==='login'&&showPassword?'text':'password'" required :minlength="mode==='login'?1:8" :autocomplete="mode==='login'?'current-password':'new-password'" /><button v-if="mode==='login'" type="button" @click="showPassword=!showPassword" :aria-label="showPassword?'Ocultar senha':'Mostrar senha'" :title="showPassword?'Ocultar senha':'Mostrar senha'"><EyeOff v-if="showPassword" :size="19"/><Eye v-else :size="19"/></button></span><small v-if="mode!=='login'">Use pelo menos 8 caracteres.</small></label>
       <label v-if="mode!=='login'">Confirme a senha<input v-model="form.password_confirmation" type="password" required minlength="8" autocomplete="new-password" /></label>
       <button class="button primary full" :disabled="busy">{{busy?'Aguarde…':mode==='register'?'Enviar para aprovação':mode==='setup'?'Definir senha e entrar':'Entrar'}}</button>
     </form>
@@ -59,5 +60,5 @@ onMounted(async()=>{if(isAdmin.value){try{await refresh();}catch(e){error.value=
 </main>
 </template>
 <style scoped>
-.access-shell{max-width:540px;margin:0 auto;padding:40px 20px;min-height:100vh}.admin-shell{max-width:1100px}.access-header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:36px}.access-header .brand-logo{width:38px;height:38px}.access-header>span:last-child{font-size:.65rem;letter-spacing:.12em;color:#627363}.access-card{padding:32px}.access-card h1{font-size:1.8rem;margin:12px 0}.access-form{display:grid;gap:18px;margin-top:26px}.access-links{margin-top:22px;text-align:center}.access-links a{color:#285d49}.access-notice{background:#e6f1e6;color:#285d49;padding:18px;border-radius:12px}.admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}.admin-stats section{display:grid;gap:8px}.admin-stats strong{font-size:2rem}.approval-row{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px 0;border-bottom:1px solid #e4e9e2}.approval-row p{overflow-wrap:anywhere}.access-actions{display:flex;flex-wrap:wrap;gap:10px}.access-actions a{text-decoration:none}@media(max-width:600px){.admin-stats{grid-template-columns:1fr}.approval-row,.section-head{align-items:stretch;flex-direction:column}.access-card{padding:22px}.access-shell{padding:24px 16px}}
+.access-shell{max-width:540px;margin:0 auto;padding:40px 20px;min-height:100vh}.admin-shell{max-width:1100px}.access-header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:36px}.access-header .brand-logo{width:38px;height:38px}.access-header>span:last-child{font-size:.65rem;letter-spacing:.12em;color:#627363}.access-card{padding:32px}.access-card h1{font-size:1.8rem;margin:12px 0}.access-form{display:grid;gap:18px;margin-top:26px}.password-input{position:relative;display:block}.password-input input{width:100%;padding-right:48px}.password-input input::-ms-reveal,.password-input input::-ms-clear{display:none}.password-input button{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:38px;height:38px;display:grid;place-items:center;border:0;background:transparent;border-radius:7px;color:#718071}.password-input button:hover{background:#edf2e9;color:#285d49}.access-links{margin-top:22px;text-align:center}.access-links a{color:#285d49}.access-notice{background:#e6f1e6;color:#285d49;padding:18px;border-radius:12px}.admin-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}.admin-stats section{display:grid;gap:8px}.admin-stats strong{font-size:2rem}.approval-row{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:20px 0;border-bottom:1px solid #e4e9e2}.approval-row p{overflow-wrap:anywhere}.access-actions{display:flex;flex-wrap:wrap;gap:10px}.access-actions a{text-decoration:none}@media(max-width:600px){.admin-stats{grid-template-columns:1fr}.approval-row,.section-head{align-items:stretch;flex-direction:column}.access-card{padding:22px}.access-shell{padding:24px 16px}}
 </style>

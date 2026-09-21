@@ -24904,7 +24904,10 @@
     "height": 153,
     "activity": "Moderadamente Ativo",
     "goal": "Perder Peso",
-    "adjustment": null
+    "adjustment": null,
+    "body_fat": null,
+    "waist": null,
+    "target_weight": null
   },
   "meals": [
     {

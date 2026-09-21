@@ -14,13 +14,23 @@ use Illuminate\Validation\Rules\Exists;
 
 class NutritionController extends Controller
 {
-    public function bootstrap()
+    public function bootstrap(Request $request)
     {
-        $seed = json_decode(file_get_contents(database_path('imports/seed.json')), true);
+        $seed = json_decode(file_get_contents(database_path('imports/seed.json')), true, 512, JSON_THROW_ON_ERROR);
+        $includeCatalog = $request->boolean('catalog', true);
+        $excludedDefaultMeals = ['Pré-Treino', 'Pós-Treino', 'Lanche - Noite'];
+        $defaultMeals = array_values(array_filter($seed['meals'], fn (array $meal): bool => ! in_array($meal['name'], $excludedDefaultMeals, true)));
+        $sharedFoods = json_decode(file_get_contents(database_path('imports/catalog.json')), true, 512, JSON_THROW_ON_ERROR);
+        $foods = collect();
+        if ($includeCatalog) {
+            $sharedFoodIds = Food::whereNotNull('source_id')->pluck('id');
+            $customFoods = Food::whereNull('source_id')->orderBy('name')->get();
+            $foods = collect($sharedFoods)->whereIn('id', $sharedFoodIds)->concat($customFoods)->sortBy('name')->values();
+        }
 
-        return ['user' => auth()->user(), 'patients' => Patient::orderBy('name')->get(), 'template' => ['name' => 'Novo plano', 'version' => 1, 'patient_id' => null, 'data' => ['profile' => [...$seed['profile'], 'name' => '', 'weight' => 70, 'height' => 170, 'age' => 30], 'meals' => array_map(fn ($meal) => [...$meal, 'items' => []], $seed['meals']), 'notes' => '']], 'foods' => Food::orderBy('name')->get(), 'plans' => Plan::orderByDesc('updated_at')->get(), 'recipes' => Recipe::all(),
+        return ['user' => auth()->user(), 'patients' => Patient::orderBy('name')->get(), 'template' => ['name' => 'Novo plano', 'version' => 1, 'patient_id' => null, 'data' => ['profile' => [...$seed['profile'], 'name' => '', 'weight' => 70, 'height' => 170, 'age' => 30, 'body_fat' => null, 'waist' => null, 'target_weight' => null], 'meals' => array_map(fn ($meal) => [...$meal, 'items' => []], $defaultMeals), 'notes' => '']], 'foods' => $foods, 'plans' => Plan::orderByDesc('updated_at')->get(), 'recipes' => Recipe::all(),
             'sources' => DB::table('sources')->get()->map(fn ($s) => json_decode($s->data, true)),
-            'activities' => $seed['activities'], 'meal_types' => $seed['meal_types'], 'categories' => collect($seed['categories'])->merge(Food::distinct()->pluck('category'))->unique()->values()];
+            'activities' => $seed['activities'], 'meal_types' => $seed['meal_types'], 'categories' => $includeCatalog ? collect($seed['categories'])->merge($foods->pluck('category'))->unique()->values() : []];
     }
 
     private function visibleFoodRule(): Exists
@@ -33,10 +43,11 @@ class NutritionController extends Controller
         $seed = json_decode(file_get_contents(database_path('imports/seed.json')), true);
 
         return ['patient_id' => ['nullable', 'integer', Rule::exists('patients', 'id')->where('user_id', auth()->id())], 'name' => 'sometimes|nullable|string|max:160', 'data' => 'required|array:profile,meals,notes',
-            'data.profile' => 'required|array:name,sex,age,weight,height,activity,goal,adjustment',
+            'data.profile' => 'required|array:name,sex,age,weight,height,body_fat,waist,target_weight,activity,goal,adjustment',
             'data.profile.name' => 'required|string|max:160', 'data.profile.sex' => ['required', Rule::in(['Masculino', 'Feminino'])],
             'data.profile.age' => 'required|integer|min:1|max:120', 'data.profile.weight' => 'required|numeric|gt:0|max:500',
-            'data.profile.height' => 'required|numeric|gt:0|max:300', 'data.profile.activity' => ['required', Rule::in(array_column($seed['activities'], 'name'))],
+            'data.profile.height' => 'required|numeric|gt:0|max:300', 'data.profile.body_fat' => 'nullable|numeric|min:2|max:70',
+            'data.profile.waist' => 'nullable|numeric|gt:0|max:300', 'data.profile.target_weight' => 'nullable|numeric|gt:0|max:500', 'data.profile.activity' => ['required', Rule::in(array_column($seed['activities'], 'name'))],
             'data.profile.goal' => ['required', Rule::in(['Perder Peso', 'Manter o Peso', 'Ganhar Peso'])],
             'data.profile.adjustment' => 'nullable|numeric|min:0|max:10000', 'data.notes' => 'nullable|string|max:10000',
             'data.meals' => 'required|array|min:1|max:30', 'data.meals.*' => 'required|array:name,time,items',
@@ -121,14 +132,17 @@ class NutritionController extends Controller
             'ingredients.*' => 'required|array:food_id,quantity,measure,measure_ml', 'ingredients.*.measure' => 'sometimes|required|in:g,mL,cup,coffee_cup,glass,goblet', 'ingredients.*.measure_ml' => 'sometimes|required|numeric|gt:0|max:2000', 'ingredients.*.food_id' => ['required', 'integer', $this->visibleFoodRule()], 'ingredients.*.quantity' => 'required|numeric|gt:0|max:100000']);
 
         return DB::transaction(function () use ($v, $nutrition) {
-            $result = $nutrition->items($v['ingredients'], Food::all()->keyBy('id'));
+            $foodIds = collect($v['ingredients'])->pluck('food_id')->unique();
+            $result = $nutrition->items($v['ingredients'], Food::whereKey($foodIds)->get()->keyBy('id'));
             $values = [];
             foreach (Nutrition::NUTRIENTS as $n) {
                 $values[$n] = $result['missing'][$n] ? null : $result['totals'][$n];
             }
             $food = Food::create([...$values, 'name' => $v['name'], 'category' => 'Receitas', 'user_id' => auth()->id(), 'base_quantity' => $result['quantity'], 'unit' => 'g', 'notes' => 'Receita calculada pela soma dos ingredientes.']);
 
-            return Recipe::create([...$v, 'food_id' => $food->id, 'user_id' => auth()->id()]);
+            $recipe = Recipe::create([...$v, 'food_id' => $food->id, 'user_id' => auth()->id()]);
+
+            return $recipe->setRelation('food', $food);
         });
     }
 }

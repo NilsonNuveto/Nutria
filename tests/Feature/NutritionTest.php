@@ -36,39 +36,54 @@ class NutritionTest extends TestCase
         $this->assertSame(15, collect(Plan::first()->data['meals'])->sum(fn ($m) => count($m['items'])));
     }
 
-    public function test_profile_matches_workbook_and_handles_blank_and_zero_adjustment(): void
+    public function test_profile_uses_current_energy_equations_and_goal_based_macros(): void
     {
-        $s = app(Nutrition::class);
-        $p = Plan::first()->data['profile'];
-        $r = $s->profile($p);
-        $this->assertEqualsWithDelta(1371.7, $r['bmr'], .000001);
-        $this->assertEqualsWithDelta(2126.135, $r['target'], .000001);
-        $this->assertEqualsWithDelta(29.0486565, $r['bmi'], .000001);
-        $this->assertSame('Obesidade Moderada', $r['bmi_label']);
-        $p['adjustment'] = 0;
-        $this->assertEqualsWithDelta($r['energy'], $s->profile($p)['target'], .000001);
-        $p['adjustment'] = 500;
-        $this->assertEqualsWithDelta(1626.135, $s->profile($p)['target'], .000001);
-        $p['goal'] = 'Ganhar Peso';
-        $this->assertEqualsWithDelta(2626.135, $s->profile($p)['target'], .000001);
-        $p['goal'] = 'Manter o Peso';
-        $this->assertEqualsWithDelta(2126.135, $s->profile($p)['target'], .000001);
-        $p['sex'] = 'Masculino';
-        $this->assertEqualsWithDelta(1456.6, $s->profile($p)['bmr'], .000001);
+        $nutrition = app(Nutrition::class);
+        $profile = Plan::first()->data['profile'];
+        $result = $nutrition->profile($profile);
+
+        $this->assertEqualsWithDelta(2234.54, $result['energy'], .000001);
+        $this->assertEqualsWithDelta(1734.54, $result['target'], .000001);
+        $this->assertEqualsWithDelta(29.0486565, $result['bmi'], .000001);
+        $this->assertSame('Sobrepeso', $result['bmi_label']);
+        $this->assertTrue($result['automatic_adjustment']);
+        $this->assertEqualsWithDelta(88.4, $result['macros']['protein']['grams'], .000001);
+        $this->assertEqualsWithDelta(215.1445, $result['macros']['carbs']['grams'], .000001);
+        $this->assertEqualsWithDelta(57.818, $result['macros']['fat']['grams'], .000001);
+        $this->assertEqualsWithDelta(24.28356, $result['macros']['fiber']['grams'], .000001);
+
+        $profile['adjustment'] = 0;
+        $this->assertEqualsWithDelta($result['energy'], $nutrition->profile($profile)['target'], .000001);
+        $profile['adjustment'] = null;
+        $profile['goal'] = 'Ganhar Peso';
+        $this->assertEqualsWithDelta($result['energy'] * 1.05, $nutrition->profile($profile)['target'], .000001);
+        $profile['goal'] = 'Manter o Peso';
+        $this->assertEqualsWithDelta($result['energy'], $nutrition->profile($profile)['target'], .000001);
     }
 
-    public function test_bmi_boundaries_follow_original_gender_specific_formulas(): void
+    public function test_profile_calculates_body_composition_and_current_adult_bmi_ranges(): void
     {
-        $p = Plan::first()->data['profile'];
-        $p['height'] = 100;
-        $s = app(Nutrition::class);
-        foreach (['Feminino' => [19, 24, 29, 39], 'Masculino' => [20, 25, 30, 40]] as $sex => $limits) {
-            $p['sex'] = $sex;
-            foreach ($limits as $i => $limit) {
-                $p['weight'] = $limit;
-                $this->assertSame(['Normal', 'Obesidade Leve', 'Obesidade Moderada', 'Obesidade Mórbida'][$i], $s->profile($p)['bmi_label']);
-            }
+        $nutrition = app(Nutrition::class);
+        $profile = Plan::first()->data['profile'];
+        $profile['body_fat'] = 30;
+        $profile['waist'] = 90;
+        $profile['target_weight'] = 60;
+        $result = $nutrition->profile($profile);
+
+        $this->assertEqualsWithDelta(20.4, $result['fat_mass'], .000001);
+        $this->assertEqualsWithDelta(47.6, $result['lean_mass'], .000001);
+        $this->assertEqualsWithDelta(90 / 153, $result['waist_height_ratio'], .000001);
+        $this->assertSame('Adiposidade central aumentada', $result['waist_height_label']);
+        $this->assertEqualsWithDelta(-8, $result['weight_delta'], .000001);
+        $this->assertEqualsWithDelta(78, $result['macros']['protein']['grams'], .000001);
+
+        $profile['height'] = 100;
+        foreach ([[18.49, 'Abaixo do peso'], [18.5, 'Eutrofia'], [25, 'Sobrepeso'], [30, 'Obesidade grau I'], [35, 'Obesidade grau II'], [40, 'Obesidade grau III']] as [$weight, $label]) {
+            $profile['weight'] = $weight;
+            $this->assertSame($label, $nutrition->profile($profile)['bmi_label']);
         }
+        $profile['age'] = 18;
+        $this->assertSame('Avaliar por curva de crescimento', $nutrition->profile($profile)['bmi_label']);
     }
 
     public function test_proportions_and_missing_nutrients_are_not_zeroed(): void
@@ -124,6 +139,7 @@ class NutritionTest extends TestCase
         $this->withoutVite();
         $this->get('/')->assertOk();
         $this->getJson('/api/bootstrap')->assertOk()->assertJsonCount(799, 'foods')->assertJsonCount(9, 'meal_types');
+        $this->getJson('/api/bootstrap?catalog=0')->assertOk()->assertJsonCount(0, 'foods')->assertJsonCount(0, 'categories');
     }
 
     public function test_meal_units_are_saved_and_scale_calculations(): void

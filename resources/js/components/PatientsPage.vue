@@ -1,13 +1,13 @@
 <script setup>
 import {ref,computed} from 'vue';
 import {api} from '../api';
-const props=defineProps({patients:Array,reloadPatients:{type:Function,required:true}});
-const emit=defineEmits(['plan']);
+const props=defineProps({patients:Array});
+const emit=defineEmits(['plan','changed']);
 const draft=ref(null),error=ref(''),busy=ref(false),search=ref('');
 const filtered=computed(()=>props.patients.filter(p=>p.name.toLocaleLowerCase().includes(search.value.toLocaleLowerCase())));
 function edit(patient){draft.value=patient?{...patient}:{name:'',email:'',phone:'',birth_date:'',notes:''};error.value='';}
-async function save(){busy.value=true;error.value='';try{const p=draft.value;await api('patients'+(p.id?'/'+p.id:''),p.id?'PUT':'POST',p);draft.value=null;search.value='';await props.reloadPatients();}catch(e){error.value=e.message;}finally{busy.value=false;}}
-async function remove(p){if(!confirm('Excluir o cadastro de '+p.name+'?'))return;try{await api('patients/'+p.id,'DELETE');await props.reloadPatients();}catch(e){error.value=e.message;}}
+async function save(){busy.value=true;error.value='';try{const p=draft.value;const saved=await api('patients'+(p.id?'/'+p.id:''),p.id?'PUT':'POST',p);draft.value=null;search.value='';emit('changed',{type:'upsert',patient:saved});}catch(e){error.value=e.message;}finally{busy.value=false;}}
+async function remove(p){if(!confirm('Excluir o cadastro de '+p.name+'?'))return;try{await api('patients/'+p.id,'DELETE');emit('changed',{type:'remove',id:p.id});}catch(e){error.value=e.message;}}
 </script>
 <template>
 <div><p v-if="error" class="error-banner" role="alert">{{error}}</p><div class="section-head patient-toolbar"><label>Buscar paciente<input v-model="search" placeholder="Nome do paciente" /></label><button class="button primary" @click="edit()">Cadastrar paciente</button></div>
