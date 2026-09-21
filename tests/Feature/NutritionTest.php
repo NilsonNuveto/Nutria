@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Nutrition;
 use Database\Seeders\NutritionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class NutritionTest extends TestCase
@@ -140,6 +141,19 @@ class NutritionTest extends TestCase
         $this->get('/')->assertOk();
         $this->getJson('/api/bootstrap')->assertOk()->assertJsonCount(799, 'foods')->assertJsonCount(9, 'meal_types');
         $this->getJson('/api/bootstrap?catalog=0')->assertOk()->assertJsonCount(0, 'foods')->assertJsonCount(0, 'categories');
+    }
+
+    public function test_bootstrap_maps_shared_catalog_by_source_key_when_database_ids_differ(): void
+    {
+        $food = Food::where('source_id', 12)->firstOrFail();
+        $newId = 50000;
+        DB::table('foods')->where('id', $food->id)->update(['id' => $newId]);
+
+        $foods = $this->getJson('/api/bootstrap')->assertOk()->json('foods');
+        $mapped = collect($foods)->first(fn (array $item): bool => $item['source_id'] === 12 && $item['source_key'] === $food->source_key);
+
+        $this->assertNotNull($mapped);
+        $this->assertSame($newId, $mapped['id']);
     }
 
     public function test_meal_units_are_saved_and_scale_calculations(): void

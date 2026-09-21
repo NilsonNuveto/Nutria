@@ -23,9 +23,14 @@ class NutritionController extends Controller
         $sharedFoods = json_decode(file_get_contents(database_path('imports/catalog.json')), true, 512, JSON_THROW_ON_ERROR);
         $foods = collect();
         if ($includeCatalog) {
-            $sharedFoodIds = Food::whereNotNull('source_id')->pluck('id');
+            $catalogBySource = collect($sharedFoods)->keyBy(fn (array $food): string => $food['source_id'].'|'.$food['source_key']);
+            $sharedFoodRecords = Food::whereNotNull('source_id')->get(['id', 'source_id', 'source_key'])->map(function (Food $food) use ($catalogBySource): ?array {
+                $catalogFood = $catalogBySource->get($food->source_id.'|'.$food->source_key);
+
+                return $catalogFood ? [...$catalogFood, 'id' => $food->id] : null;
+            })->filter();
             $customFoods = Food::whereNull('source_id')->orderBy('name')->get();
-            $foods = collect($sharedFoods)->whereIn('id', $sharedFoodIds)->concat($customFoods)->sortBy('name')->values();
+            $foods = $sharedFoodRecords->concat($customFoods)->sortBy('name')->values();
         }
 
         return ['user' => auth()->user(), 'patients' => Patient::orderBy('name')->get(), 'template' => ['name' => 'Novo plano', 'version' => 1, 'patient_id' => null, 'data' => ['profile' => [...$seed['profile'], 'name' => '', 'weight' => 70, 'height' => 170, 'age' => 30, 'body_fat' => null, 'waist' => null, 'target_weight' => null], 'meals' => array_map(fn ($meal) => [...$meal, 'items' => []], $defaultMeals), 'notes' => '']], 'foods' => $foods, 'plans' => Plan::orderByDesc('updated_at')->get(), 'recipes' => Recipe::all(),
